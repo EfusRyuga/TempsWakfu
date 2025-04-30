@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temps dans Wakfu</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #001f3f;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+
+        #toggle-season {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            background-color: #0074D9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #toggle-season:hover {
+            background-color: #0056A3;
+        }
+
+        #next-state {
+            margin-right: auto;
+            font-size: 1.2em;
+            background-color: #0056A3;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        #status {
+            margin: 10px auto;
+            text-align: center;
+            width: fit-content;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .day {
+            background-color: #dac23f; /* couleur jour */
+        }
+
+        .night {
+            background-color: #46466b; /* couleur nuit */
+        }
+
+        #current-time {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            background-color: #003366;
+            padding: 10px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggle-season">Passer en heure d'hiver</button>
+    <div id="current-time">Heure actuelle : Chargement...</div>
+    <div id="status">Chargement...</div>
+    <div id="next-state">Calcul du temps restant...</div>
+    <script>
+        let isSummerTime = true; // heure été par défaut
+        let parisTime = null; // heure de paris
+
+        async function fetchParisTime() {
+            try {
+                const response = await fetch('https://worldtimeapi.org/api/timezone/Europe/Paris');
+                const data = await response.json();
+                parisTime = new Date(data.datetime);
+            } catch (error) {
+                console.error('Failed to fetch Paris time:', error);
+            }
+        }
+
+        function getParisTime() {
+            if (!parisTime) return new Date(); // heure locale si pas de data
+            const offset = isSummerTime ? 2 : 1; // heure été / hiver
+            return new Date(parisTime.getTime() + (offset - parisTime.getTimezoneOffset() / 60) * 3600000);
+        }
+
+        // Détermine si c'est le jour ou la nuit en fonction de l'heure de Paris
+        function isDay() {
+            const time = getParisTime(); // Récupère l'heure actuelle de Paris
+            const hour = time.getHours(); // Heure actuelle
+            const min = time.getMinutes(); // Minutes actuelles
+            // Retourne vrai si c'est le jour, faux si c'est la nuit, merci Isp
+            return (hour % 2 !== 0 && min < 30) || (hour % 2 === 0 && min >= 30);
+        }
+
+        // Met à jour l'affichage pour indiquer si c'est le jour ou la nuit
+        function updateStatus() {
+            const statusDiv = document.getElementById('status');
+            const isCurrentlyDay = isDay();
+            statusDiv.textContent = isCurrentlyDay ? "C'est le jour" : "C'est la nuit";
+            statusDiv.className = isCurrentlyDay ? 'day' : 'night'; // Update class for styling
+        }
+
+        // Calcule le temps restant jusqu'au prochain changement d'état (jour/nuit)
+        function getTimeUntilNextState() {
+            const time = getParisTime(); // Récupère l'heure actuelle de Paris
+            const hour = time.getHours(); // Heure actuelle
+            const min = time.getMinutes(); // Minutes actuelles
+            const sec = time.getSeconds(); // Secondes actuelles
+            let minutesUntilNextState;
+
+            // Calcule les minutes restantes jusqu'au prochain changement d'état
+            if (min < 30) {
+                minutesUntilNextState = 30 - min - 1; // Jusqu'à la moitié de l'heure
+            } else {
+                minutesUntilNextState = 59 - min; // Jusqu'à la fin de l'heure
+            }
+
+            // Calcule les secondes restantes jusqu'au prochain changement d'état
+            const secondsUntilNextState = 59 - sec;
+            return {
+                minutes: minutesUntilNextState, // Minutes restantes
+                seconds: secondsUntilNextState // Secondes restantes
+            };
+        }
+
+        function updateNextStateTime() {
+            const nextStateDiv = document.getElementById('next-state');
+            const { minutes, seconds } = getTimeUntilNextState();
+            const nextState = isDay() ? "nuit" : "jour";
+            nextStateDiv.textContent = `Temps jusqu'à ${nextState} : ${minutes} min ${seconds} sec`;
+        }
+
+        function updateCurrentTime() {
+            const currentTimeDiv = document.getElementById('current-time');
+            const time = getParisTime(); // Récupère l'heure actuelle de Paris
+            const hours = time.getHours().toString().padStart(2, '0');
+            const minutes = time.getMinutes().toString().padStart(2, '0');
+            const seconds = time.getSeconds().toString().padStart(2, '0');
+            currentTimeDiv.textContent = `Heure actuelle : ${hours}:${minutes}:${seconds}`;
+        }
+
+        document.getElementById('toggle-season').addEventListener('click', () => {
+            isSummerTime = !isSummerTime;
+            document.getElementById('toggle-season').textContent = isSummerTime
+                ? "Passer aux heures d'hiver"
+                : "Passer aux heures d'été";
+            updateStatus();
+        });
+
+        // Initial setup
+        (async () => {
+            await fetchParisTime();
+            updateStatus();
+            updateNextStateTime();
+            updateCurrentTime();
+
+            // Update every minute
+            setInterval(updateStatus, 60000);
+
+            // Update next state time every second
+            setInterval(updateNextStateTime, 1000);
+
+            // Update current time every second
+            setInterval(updateCurrentTime, 1000);
+        })();
+    </script>
+</body>
+</html>
