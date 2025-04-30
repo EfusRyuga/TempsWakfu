@@ -17,22 +17,6 @@
             text-align: center;
         }
 
-        #toggle-season {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            padding: 5px 10px;
-            background-color: #0074D9;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #toggle-season:hover {
-            background-color: #0056A3;
-        }
-
         #next-state {
             margin-right: auto;
             font-size: 1.2em;
@@ -69,12 +53,10 @@
     </style>
 </head>
 <body>
-    <!--<button id="toggle-season">Passer en heure d'hiver</button> -->
     <div id="current-time">Heure actuelle : Chargement...</div>
     <div id="status">Chargement...</div>
     <div id="next-state">Calcul du temps restant...</div>
     <script>
-        let isSummerTime = true; // heure été par défaut
         let parisTime = null; // heure de paris
 
         async function fetchParisTime() {
@@ -89,8 +71,7 @@
 
         function getParisTime() {
             if (!parisTime) return new Date(); // heure locale si pas de data
-            const offset = isSummerTime ? 2 : 1; // heure été / hiver
-            return new Date(parisTime.getTime() + (offset - parisTime.getTimezoneOffset() / 60) * 3600000);
+            return new Date(parisTime.getTime());
         }
 
         // Détermine si c'est le jour ou la nuit en fonction de l'heure de Paris
@@ -148,14 +129,6 @@
             const seconds = time.getSeconds().toString().padStart(2, '0');
             currentTimeDiv.textContent = `Heure actuelle : ${hours}:${minutes}:${seconds}`;
         }
-
-        document.getElementById('toggle-season').addEventListener('click', () => {
-            isSummerTime = !isSummerTime;
-            document.getElementById('toggle-season').textContent = isSummerTime
-                ? "Passer aux heures d'hiver"
-                : "Passer aux heures d'été";
-            updateStatus();
-        });
 
         // Initial setup
         (async () => {
